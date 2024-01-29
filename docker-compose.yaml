@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  autoscaler:
+    image: autoscaler:1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: release-stage
+    environment:
+      - HOST=host.docker.internal
+      - PORT=8123
+      - USE_HTTPS=false
+      - TARGET_CPU_USAGE=0.80
+      - POLLING_INTERVAL=15
+      - RETRY_COUNT=5
+      - RETRY_DELAY=2
+    restart: unless-stopped
