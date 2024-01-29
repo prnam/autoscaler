@@ -15,6 +15,7 @@ AutoScaler is an application designed to automatically scale a separate applicat
 6. Bandit (for security analysis)
 7. SAST and DAST tools of your choice (ex: Snyk, OWASP ZAP)
 8. Access to a macOS machine (for installation on macOS)
+9. Scaleit Vimeo Application
 
 ### Installation and Setup
 
