@@ -22,16 +22,7 @@ class MockConfig:
         retry_delay (int): Delay in seconds between retries.
     """
 
-    def __init__(
-        self,
-        host,
-        port,
-        use_https,
-        target_cpu_usage,
-        polling_interval,
-        retry_count,
-        retry_delay,
-    ):
+    def __init__(self, host, port, use_https, target_cpu_usage, polling_interval, retry_count, retry_delay):
         self.host = host
         self.port = port
         self.use_https = use_https
@@ -70,15 +61,7 @@ def test_auto_scaler_adjustment(mocker, mock_config, cpu_usage):
     expected_replicas = current_replicas
 
     # Create an AutoScaler instance with mock configuration
-    auto_scaler = AutoScaler(
-        mock_config.host,
-        mock_config.port,
-        mock_config.use_https,
-        mock_config.target_cpu_usage,
-        mock_config.polling_interval,
-        mock_config.retry_count,
-        mock_config.retry_delay,
-    )
+    auto_scaler = AutoScaler(mock_config.host, mock_config.port, mock_config.use_https, mock_config.target_cpu_usage, mock_config.polling_interval, mock_config.retry_count, mock_config.retry_delay)
     constructed_url = auto_scaler.construct_url("/app/replicas")
 
     # Mock the responses for the HTTP requests
@@ -86,10 +69,7 @@ def test_auto_scaler_adjustment(mocker, mock_config, cpu_usage):
         "requests.get",
         return_value=Mock(
             status_code=200,
-            json=lambda: {
-                "cpu": {"highPriority": cpu_usage},
-                "replicas": current_replicas,
-            },
+            json=lambda: {"cpu": {"highPriority": cpu_usage}, "replicas": current_replicas},
         ),
     )
     mock_put = mocker.patch("requests.put", return_value=Mock(status_code=204))
@@ -107,12 +87,7 @@ def test_auto_scaler_adjustment(mocker, mock_config, cpu_usage):
         expected_replicas = current_replicas + 1
 
     if expected_replicas != current_replicas:
-        mock_put.assert_called_with(
-            constructed_url,
-            json={"replicas": expected_replicas},
-            headers={"Content-Type": "application/json"},
-            timeout=5,
-        )
+        mock_put.assert_called_with(constructed_url, json={"replicas": expected_replicas}, headers={"Content-Type": "application/json"}, timeout=5)
     else:
         mock_put.assert_not_called()
 
@@ -126,19 +101,8 @@ def test_get_current_status_server_error(mocker, mock_config):
         mocker: Pytest fixture for mocking.
         mock_config: Mock configuration object for the AutoScaler.
     """
-    auto_scaler = AutoScaler(
-        mock_config.host,
-        mock_config.port,
-        mock_config.use_https,
-        mock_config.target_cpu_usage,
-        mock_config.polling_interval,
-        mock_config.retry_count,
-        mock_config.retry_delay,
-    )
-    mocker.patch(
-        "requests.get",
-        return_value=Mock(status_code=500, text="error retrieving status"),
-    )
+    auto_scaler = AutoScaler(mock_config.host, mock_config.port, mock_config.use_https, mock_config.target_cpu_usage, mock_config.polling_interval, mock_config.retry_count, mock_config.retry_delay)
+    mocker.patch("requests.get", return_value=Mock(status_code=500, text="error retrieving status"))
 
     response = auto_scaler.get_current_status()
     assert response is None
@@ -163,10 +127,7 @@ def test_set_replica_count_server_error(mocker, mock_config, caplog):
         mock_config.retry_count,
         mock_config.retry_delay,
     )
-    mocker.patch(
-        "requests.put",
-        return_value=Mock(status_code=500, text="error updating replicas"),
-    )
+    mocker.patch("requests.put", return_value=Mock(status_code=500, text="error updating replicas"))
 
     auto_scaler.set_replica_count(10)
     assert "error updating replicas" in caplog.text
@@ -182,22 +143,10 @@ def test_handle_sigterm(mock_config):
     """
     global auto_scaler  # Declare as global to modify the variable within this test
 
-    auto_scaler = AutoScaler(
-        mock_config.host,
-        mock_config.port,
-        mock_config.use_https,
-        mock_config.target_cpu_usage,
-        mock_config.polling_interval,
-        mock_config.retry_count,
-        mock_config.retry_delay,
-    )
+    auto_scaler = AutoScaler(mock_config.host, mock_config.port, mock_config.use_https, mock_config.target_cpu_usage, mock_config.polling_interval, mock_config.retry_count, mock_config.retry_delay)
 
     # Register the signal handler
-    signal.signal(
-        signal.SIGTERM,
-        partial(
-            handle_sigterm,
-            auto_scaler=auto_scaler))
+    signal.signal(signal.SIGTERM, partial(handle_sigterm, auto_scaler=auto_scaler))
 
     # Send SIGTERM to the current process
     os.kill(os.getpid(), signal.SIGTERM)
@@ -210,21 +159,7 @@ def test_valid_arguments():
     """
     Test the parse_arguments function with valid arguments.
     """
-    valid_args = [
-        "autoscaler.py",
-        "--target-cpu-usage",
-        "0.75",
-        "--polling-interval",
-        "10",
-        "--retry-count",
-        "5",
-        "--retry-delay",
-        "3",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8080",
-    ]
+    valid_args = ["autoscaler.py", "--target-cpu-usage", "0.75", "--polling-interval", "10", "--retry-count", "5", "--retry-delay", "3", "--host", "127.0.0.1", "--port", "8080"]
     with patch.object(sys, "argv", valid_args):
         args = parse_arguments()
         assert args.target_cpu_usage == 0.75
@@ -248,10 +183,7 @@ def test_invalid_port_argument():
     """
     Test the parse_arguments function with an invalid port argument.
     """
-    invalid_port_args = [
-        "autoscaler.py",
-        "--port",
-        "70000"]  # Invalid port number
+    invalid_port_args = ["autoscaler.py", "--port", "70000"]  # Invalid port number
     with patch.object(sys, "argv", invalid_port_args), pytest.raises(SystemExit):
         parse_arguments()
 
@@ -261,13 +193,7 @@ def test_https_argument_enabled():
     Test the parse_arguments function with the --https argument enabled.
     Verifies that the use_https attribute is set to True when the --https flag is provided.
     """
-    https_args = [
-        "autoscaler.py",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8080",
-        "--https"]
+    https_args = ["autoscaler.py", "--host", "127.0.0.1", "--port", "8080", "--https"]
     with patch.object(sys, "argv", https_args):
         args = parse_arguments()
         assert args.https is True

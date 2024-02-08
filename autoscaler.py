@@ -4,25 +4,18 @@ import argparse
 import signal
 import sys
 import ipaddress
+from datetime import datetime
 from functools import partial
 from urllib.parse import urlunparse
 import requests
+
 
 class AutoScaler:
     """
     A class used to automatically scale an application based on CPU utilization.
     """
 
-    def __init__(
-        self,
-        host,
-        port,
-        use_https,
-        target_cpu_usage,
-        polling_interval,
-        retry_count,
-        retry_delay,
-    ):
+    def __init__(self, host, port, use_https, target_cpu_usage, polling_interval, retry_count, retry_delay):
         """
         Initializes the AutoScaler with the given configuration.
 
@@ -71,11 +64,7 @@ class AutoScaler:
         while attempts < self.retry_count:
             try:
                 # Make the HTTP GET request to the application's status endpoint
-                response = requests.get(
-                    self.construct_url("/app/status"),
-                    headers={"Accept": "application/json"},
-                    timeout=5,
-                )
+                response = requests.get(self.construct_url("/app/status"), headers={"Accept": "application/json"}, timeout=5)
 
                 # Check if the response is successful (HTTP 200 OK)
                 if response.status_code == 200:
@@ -83,9 +72,7 @@ class AutoScaler:
                     return response.json()
                 else:
                     # Log an error if the response status code indicates a failure
-                    logging.error(
-                        f"HTTP Verb: {response.request.method}, HTTP Status: {response.status_code}, HTTP Message: {response.text.strip()}"
-                    )
+                    logging.error(f"HTTP Verb: {response.request.method}, HTTP Status: {response.status_code}, HTTP Message: {response.text.strip()}")
 
             except requests.exceptions.RequestException as e:
                 # Log an error if a request exception occurs (e.g., network
@@ -94,9 +81,7 @@ class AutoScaler:
 
             # Increment the number of attempts and apply an exponential backoff for retries
             attempts += 1
-            logging.error(
-                f"HTTP Verb: GET, Retry (in seconds): {self.retry_delay**attempts}, Attempt #: {attempts}"
-            )
+            logging.error(f"HTTP Verb: GET, Retry (in seconds): {self.retry_delay**attempts}, Attempt #: {attempts}")
             time.sleep(self.retry_delay**attempts)
 
         # Return None if all retry attempts fail
@@ -126,21 +111,14 @@ class AutoScaler:
                 data = {"replicas": new_count}
 
                 # Make the HTTP PUT request
-                response = requests.put(
-                    self.construct_url("/app/replicas"),
-                    json=data,
-                    headers={"Content-Type": "application/json"},
-                    timeout=5,
-                )
+                response = requests.put(self.construct_url("/app/replicas"), json=data, headers={"Content-Type": "application/json"}, timeout=5)
 
                 # Check the response status code
                 if response.status_code == 204:
                     success = True
                     return
                 else:
-                    logging.error(
-                        f"HTTP Verb: {response.request.method}, HTTP Status: {response.status_code}, HTTP Message: {response.text.strip()}"
-                    )
+                    logging.error(f"HTTP Verb: {response.request.method}, HTTP Status: {response.status_code}, HTTP Message: {response.text.strip()}")
 
             except requests.exceptions.RequestException as e:
                 # Handle request exceptions (e.g., network issues)
@@ -148,9 +126,7 @@ class AutoScaler:
 
             # Increment retry attempts and log details
             attempts += 1
-            logging.error(
-                f"HTTP Verb: PUT, Retry (in seconds): {self.retry_delay**attempts}, Attempt #: {attempts}"
-            )
+            logging.error(f"HTTP Verb: PUT, Retry (in seconds): {self.retry_delay**attempts}, Attempt #: {attempts}")
 
             # Apply exponential backoff delay before the next retry
             time.sleep(self.retry_delay**attempts)
@@ -174,18 +150,12 @@ class AutoScaler:
 
                 # Calculate the necessary adjustment based on CPU usage
                 if current_cpu < self.target_cpu_usage:
-                    new_replicas = max(
-                        1, current_replicas - 1
-                    )  # Decrease replicas if CPU usage is below target
+                    new_replicas = max(1, current_replicas - 1)  # Decrease replicas if CPU usage is below target
                 if current_cpu > self.target_cpu_usage:
-                    new_replicas = (
-                        current_replicas + 1
-                    )  # Increase replicas if CPU usage is above target
+                    new_replicas = current_replicas + 1  # Increase replicas if CPU usage is above target
 
                 # Log the current status and any adjustments made
-                logging.info(
-                    f"Current CPU: {current_cpu}, Current Replicas: {current_replicas}, New Replicas: {new_replicas}"
-                )
+                logging.info(f"Current CPU: {current_cpu}, Current Replicas: {current_replicas}, New Replicas: {new_replicas}")
 
                 # Update the number of replicas if there is a change
                 if new_replicas != current_replicas:
@@ -231,8 +201,7 @@ class ValidatePortAction(argparse.Action):
         max_port = 65535
         if not min_port <= values <= max_port:
             # If the port number is outside the valid range, raise an error
-            raise argparse.ArgumentError(
-                self, f"Invalid port number. Must be between {min_port} and {max_port}")
+            raise argparse.ArgumentError(self, f"Invalid port number. Must be between {min_port} and {max_port}")
 
         # If validation is successful, set the value in the namespace
         setattr(namespace, self.dest, values)
@@ -250,54 +219,14 @@ def parse_arguments():
     Returns:
         argparse.Namespace: An object containing the parsed command-line arguments.
     """
-    parser = argparse.ArgumentParser(
-        description="Auto-scaler for adjusting the number of replicas based on CPU utilization.")
-    parser.add_argument(
-        "-tcu",
-        "--target-cpu-usage",
-        type=float,
-        default=0.80,
-        help="Target CPU usage to maintain (default: 0.80)",
-    )
-    parser.add_argument(
-        "-pi",
-        "--polling-interval",
-        type=int,
-        default=15,
-        help="Seconds between polling (default: 15)",
-    )
-    parser.add_argument(
-        "-rc",
-        "--retry-count",
-        type=int,
-        default=6,
-        help="Number of retries on failure (default: 6)",
-    )
-    parser.add_argument(
-        "-rd",
-        "--retry-delay",
-        type=int,
-        default=2,
-        help="Seconds between retries (default: 2)",
-    )
-    parser.add_argument(
-        "-ip",
-        "--host",
-        type=str,
-        default="localhost",
-        help="Host of the application (default: localhost)",
-    )
-    parser.add_argument(
-        "-p",
-        "--port",
-        type=int,
-        default=8123,
-        action=ValidatePortAction,
-        help="Port of the application (default: 8123)",
-    )
-    parser.add_argument(
-        "--https", action="store_true", help="Enable HTTPS for the application"
-    )
+    parser = argparse.ArgumentParser(description="Auto-scaler for adjusting the number of replicas based on CPU utilization.")
+    parser.add_argument("-tcu", "--target-cpu-usage", type=float, default=0.80, help="Target CPU usage to maintain (default: 0.80)")
+    parser.add_argument("-pi", "--polling-interval", type=int, default=15, help="Seconds between polling (default: 15)")
+    parser.add_argument("-rc", "--retry-count", type=int, default=6, help="Number of retries on failure (default: 6)")
+    parser.add_argument("-rd", "--retry-delay", type=int, default=2, help="Seconds between retries (default: 2)")
+    parser.add_argument("-ip", "--host", type=str, default="localhost", help="Host of the application (default: localhost)")
+    parser.add_argument("-p", "--port", type=int, default=8123, action=ValidatePortAction, help="Port of the application (default: 8123)")
+    parser.add_argument("--https", action="store_true", help="Enable HTTPS for the application")
 
     args = parser.parse_args()
 
@@ -318,7 +247,7 @@ def is_valid_ip_address(ip):
     Returns:
         bool: True if the IP address or 'localhost' or 'host.docker.internal' is valid, False otherwise.
     """
-    if ip == "localhost" or ip =="host.docker.internal":
+    if ip == "localhost" or ip == "host.docker.internal":
         return True
     try:
         ipaddress.ip_address(ip)
@@ -353,33 +282,18 @@ def main():
 
     Upon receiving a keyboard interrupt, the function requests the AutoScaler to stop its operation gracefully.
     """
+    start_time = datetime.now()
     try:
         # Configure logging with a specific format and level
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%dT%H:%M:%S",
-        )
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
         args = parse_arguments()
 
         # Parse command-line arguments for the AutoScaler configuration
         global auto_scaler
-        auto_scaler = AutoScaler(
-            args.host,
-            args.port,
-            args.https,
-            args.target_cpu_usage,
-            args.polling_interval,
-            args.retry_count,
-            args.retry_delay,
-        )
+        auto_scaler = AutoScaler(args.host, args.port, args.https, args.target_cpu_usage, args.polling_interval, args.retry_count, args.retry_delay)
 
         # Set up a signal handler for gracefully handling SIGTERM signals
-        signal.signal(
-            signal.SIGTERM,
-            partial(
-                handle_sigterm,
-                auto_scaler=auto_scaler))
+        signal.signal(signal.SIGTERM, partial(handle_sigterm, auto_scaler=auto_scaler))
 
         # Start the auto-scaling process
         auto_scaler.run()
@@ -387,6 +301,11 @@ def main():
     except KeyboardInterrupt:
         # Handle keyboard interrupt (Ctrl+C) and request a graceful shutdown of the AutoScaler
         print("Stopping AutoScaler...")
+        auto_scaler.request_stop()
+
+    finally:
+        shutdown_time = datetime.now()
+        logging.info(f"Started at: {start_time.isoformat()}, Shutdown at: {shutdown_time.isoformat()}, Uptime: {shutdown_time - start_time}")
         auto_scaler.request_stop()
 
 
