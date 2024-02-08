@@ -229,7 +229,7 @@ def parse_arguments():
     args = parser.parse_args()
 
     if not is_valid_ip_address(args.host):
-        print("Error: Invalid IP address provided.")
+        logging.error(f"Invalid IP address provided.")
         sys.exit(1)
 
     return args
@@ -281,15 +281,19 @@ def main():
     Upon receiving a keyboard interrupt, the function requests the AutoScaler to stop its operation gracefully.
     """
 
+    global auto_scaler
+    auto_scaler = None
+
     try:
         start_time = datetime.now()
         # Configure logging with a specific format and level
         logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
         logging.info("AutoScaler started")
+        # Initialize auto_scaler to None
         args = parse_arguments()
 
+        
         # Parse command-line arguments for the AutoScaler configuration
-        global auto_scaler
         auto_scaler = AutoScaler(args.host, args.port, args.https, args.target_cpu_usage, args.polling_interval, args.retry_count, args.retry_delay)
 
         # Set up a signal handler for gracefully handling SIGTERM signals
@@ -302,12 +306,22 @@ def main():
         # Handle keyboard interrupt (Ctrl+C) and request a graceful shutdown of the AutoScaler
         logging.info(f"Stopping AutoScaler...")
         auto_scaler.request_stop()
+    # except Exception as e:
+    #     # Handle keyboard interrupt (Ctrl+C) and request a graceful shutdown of the AutoScaler
+    #     logging.info(f"Expection raised. Reason: {e}")
+    #     auto_scaler.request_stop()
+    except SystemExit as e:
+        # Log an error message for invalid arguments
+        logging.error(f"Invalid arguments provided. Exiting with code {e.code}.")
 
     finally:
+        if auto_scaler is not None:
+            auto_scaler.request_stop()
         logging.info(f"AutoScaler Stopped")
+        
         shutdown_time = datetime.now()
         logging.info(f"Started at: {start_time.isoformat()}, Shutdown at: {shutdown_time.isoformat()}, Uptime: {shutdown_time - start_time}")
-        auto_scaler.request_stop()
+        
 
 
 if __name__ == "__main__":
