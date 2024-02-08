@@ -36,8 +36,7 @@ class AutoScaler:
         self.retry_count = retry_count
         self.retry_delay = retry_delay
         self.session = requests.Session()
-        # If set to True, the run loop will execute only once (useful for
-        # testing)
+        # If set to True, the run loop will execute only once (useful for testing)
         self.run_once = False
         self.stop_requested = False
 
@@ -206,7 +205,6 @@ class ValidatePortAction(argparse.Action):
         # If validation is successful, set the value in the namespace
         setattr(namespace, self.dest, values)
 
-
 def parse_arguments():
     """
     Parses command-line arguments for the AutoScaler application.
@@ -282,10 +280,12 @@ def main():
 
     Upon receiving a keyboard interrupt, the function requests the AutoScaler to stop its operation gracefully.
     """
-    start_time = datetime.now()
+
     try:
+        start_time = datetime.now()
         # Configure logging with a specific format and level
         logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
+        logging.info("AutoScaler started")
         args = parse_arguments()
 
         # Parse command-line arguments for the AutoScaler configuration
@@ -300,10 +300,11 @@ def main():
 
     except KeyboardInterrupt:
         # Handle keyboard interrupt (Ctrl+C) and request a graceful shutdown of the AutoScaler
-        print("Stopping AutoScaler...")
+        logging.info(f"Stopping AutoScaler...")
         auto_scaler.request_stop()
 
     finally:
+        logging.info(f"AutoScaler Stopped")
         shutdown_time = datetime.now()
         logging.info(f"Started at: {start_time.isoformat()}, Shutdown at: {shutdown_time.isoformat()}, Uptime: {shutdown_time - start_time}")
         auto_scaler.request_stop()

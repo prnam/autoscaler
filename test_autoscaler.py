@@ -65,13 +65,7 @@ def test_auto_scaler_adjustment(mocker, mock_config, cpu_usage):
     constructed_url = auto_scaler.construct_url("/app/replicas")
 
     # Mock the responses for the HTTP requests
-    mocker.patch(
-        "requests.get",
-        return_value=Mock(
-            status_code=200,
-            json=lambda: {"cpu": {"highPriority": cpu_usage}, "replicas": current_replicas},
-        ),
-    )
+    mocker.patch("requests.get", return_value=Mock(status_code=200, json=lambda: {"cpu": {"highPriority": cpu_usage}, "replicas": current_replicas}))
     mock_put = mocker.patch("requests.put", return_value=Mock(status_code=204))
 
     # Run the auto-scaling process once
@@ -118,15 +112,7 @@ def test_set_replica_count_server_error(mocker, mock_config, caplog):
         mock_config: Mock configuration object for the AutoScaler.
         caplog: Pytest fixture for capturing log output.
     """
-    auto_scaler = AutoScaler(
-        mock_config.host,
-        mock_config.port,
-        mock_config.use_https,
-        mock_config.target_cpu_usage,
-        mock_config.polling_interval,
-        mock_config.retry_count,
-        mock_config.retry_delay,
-    )
+    auto_scaler = AutoScaler(mock_config.host, mock_config.port, mock_config.use_https, mock_config.target_cpu_usage, mock_config.polling_interval, mock_config.retry_count, mock_config.retry_delay)
     mocker.patch("requests.put", return_value=Mock(status_code=500, text="error updating replicas"))
 
     auto_scaler.set_replica_count(10)
